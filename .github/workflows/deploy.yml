@@ -1,18 +1,32 @@
-name: Build and Deploy to EC2
+name: Build & Deploy create-user to EC2
 
 on:
   push:
     branches:
       - qa
+  pull_request:
+    branches:
       - main
 
 jobs:
   build-and-deploy:
+    name: Build, Push to DockerHub and Deploy to EC2
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repositorio
+      - name: Checkout repo
         uses: actions/checkout@v3
+
+      - name: Set deployment variables
+        id: set-vars
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/qa" ]]; then
+            echo "env=QA" >> $GITHUB_OUTPUT
+            echo "tag=qa-latest" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+            echo "env=PROD" >> $GITHUB_OUTPUT
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -21,38 +35,34 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
-        run: docker build -t kalemat/01-create-user:latest .
+        run: |
+          docker build -t kalemat/01-create-user:${{ steps.set-vars.outputs.tag }} .
 
       - name: Push Docker image to Docker Hub
-        run: docker push kalemat/01-create-user:latest
-
-      - name: Determinar entorno
-        id: vars
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/qa" ]]; then
-            echo "env=QA" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "env=PROD" >> $GITHUB_OUTPUT
-          fi
+          docker push kalemat/01-create-user:${{ steps.set-vars.outputs.tag }}
 
-      - name: Desplegar en EC2
+      - name: Connect and deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets[format('EC2_HOST_', steps.vars.outputs.env)] }}
-          username: ${{ secrets[format('EC2_USER_', steps.vars.outputs.env)] }}
-          key: ${{ secrets[format('EC2_KEY_', steps.vars.outputs.env)] }}
+          host: ${{ secrets[format('EC2_HOST_{0}', steps.set-vars.outputs.env)] }}
+          username: ${{ secrets[format('EC2_USER_{0}', steps.set-vars.outputs.env)] }}
+          key: ${{ secrets[format('EC2_KEY_{0}', steps.set-vars.outputs.env)] }}
+          port: 22
+          timeout: 30s
+          command_timeout: 10m
           script: |
-            echo "🔁 Deteniendo contenedor viejo (si existe)..."
+            echo " Deteniendo contenedor anterior (si existe)..."
             docker stop 01-create-user || true
             docker rm 01-create-user || true
 
-            echo "⬇️ Descargando nueva imagen desde Docker Hub..."
-            docker pull kalemat/01-create-user:latest
+            echo " Descargando imagen desde Docker Hub..."
+            docker pull kalemat/01-create-user:${{ steps.set-vars.outputs.tag }}
 
-            echo "🚀 Ejecutando nuevo contenedor..."
+            echo " Iniciando contenedor..."
             docker run -d \
               --name 01-create-user \
               -p 3001:3001 \
-              kalemat/01-create-user:latest
+              kalemat/01-create-user:${{ steps.set-vars.outputs.tag }}
 
-            echo "✅ Despliegue completado"
+            echo " Despliegue finalizado."
