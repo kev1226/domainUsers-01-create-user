@@ -1,4 +1,4 @@
-name: Deploy 01-create-user to EC2
+name: Deploy 01-create-user from Docker Hub
 
 on:
   push:
@@ -11,43 +11,36 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy create-user to EC2
+    name: Deploy to EC2
 
     steps:
-      - name: Set environment variables
+      - name: Determinar entorno
         id: vars
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/qa" ]]; then
             echo "env=QA" >> $GITHUB_OUTPUT
-            echo "host=${{ secrets.EC2_HOST_QA }}" >> $GITHUB_OUTPUT
-            echo "user=${{ secrets.EC2_USER_QA }}" >> $GITHUB_OUTPUT
-            echo "key=${{ secrets.EC2_KEY_QA }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
             echo "env=PROD" >> $GITHUB_OUTPUT
-            echo "host=${{ secrets.EC2_HOST_PROD }}" >> $GITHUB_OUTPUT
-            echo "user=${{ secrets.EC2_USER_PROD }}" >> $GITHUB_OUTPUT
-            echo "key=${{ secrets.EC2_KEY_PROD }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Deploy to EC2
+      - name: Conectarse a EC2 y desplegar
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ steps.vars.outputs.host }}
-          username: ${{ steps.vars.outputs.user }}
-          key: ${{ steps.vars.outputs.key }}
-          port: 22
+          host: ${{ secrets[format('EC2_HOST_', steps.vars.outputs.env)] }}
+          username: ${{ secrets[format('EC2_USER_', steps.vars.outputs.env)] }}
+          key: ${{ secrets[format('EC2_KEY_', steps.vars.outputs.env)] }}
           script: |
-            echo "🔁 Parando contenedor existente..."
+            echo "🔁 Deteniendo contenedor viejo (si existe)..."
             docker stop 01-create-user || true
             docker rm 01-create-user || true
 
-            echo "⬇️ Actualizando imagen desde Docker Hub..."
-            docker pull kalemat/01-create-user
+            echo "⬇️ Descargando imagen desde Docker Hub..."
+            docker pull kalemat/01-create-user:latest
 
             echo "🚀 Ejecutando contenedor..."
             docker run -d \
               --name 01-create-user \
               -p 3001:3001 \
-              kalemat/01-create-user
+              kalemat/01-create-user:latest
 
-            echo "✅ Despliegue completado en ${{ steps.vars.outputs.env }}"
+            echo "✅ Despliegue finalizado"
