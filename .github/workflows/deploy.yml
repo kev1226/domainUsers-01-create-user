@@ -56,13 +56,14 @@ jobs:
             docker stop 01-create-user || true
             docker rm 01-create-user || true
 
-            echo " Descargando imagen desde Docker Hub..."
+            echo " Descargando nueva imagen desde Docker Hub..."
             docker pull kalemat/01-create-user:${{ steps.set-vars.outputs.tag }}
 
-            echo " Iniciando contenedor..."
+            echo " Iniciando nuevo contenedor con restart always..."
             docker run -d \
               --name 01-create-user \
+              --restart always \
               -p 3001:3001 \
               kalemat/01-create-user:${{ steps.set-vars.outputs.tag }}
 
-            echo " Despliegue finalizado."
+            echo " Despliegue finalizado y persistente tras reinicio de EC2."
