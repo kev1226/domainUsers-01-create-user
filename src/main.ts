@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { kafkaServerConfig } from './kafka/kafka-server.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,13 +17,7 @@ async function bootstrap() {
     }),
   );
 
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.KAFKA,
-    options: {
-      client: { clientId: 'create-user', brokers: ['localhost:9092'] },
-      consumer: { groupId: 'create-user-group-server' },
-    },
-  });
+  app.connectMicroservice<MicroserviceOptions>(kafkaServerConfig);
 
   await app.startAllMicroservices();
 

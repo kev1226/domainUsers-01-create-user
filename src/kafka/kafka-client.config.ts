@@ -7,7 +7,7 @@ export const kafkaClientConfig: ClientsModuleOptions = [
     options: {
       client: {
         clientId: 'create-user',
-        brokers: ['localhost:9092'],
+        brokers: ['3.232.44.31:9092'],
       },
       consumer: {
         groupId: 'create-user-group',
