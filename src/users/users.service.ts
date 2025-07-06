@@ -10,9 +10,9 @@ import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcryptjs from 'bcryptjs';
-import { KafkaServices } from 'src/kafka/kafka-constants';
+import { KafkaServices } from '../kafka/kafka-constants';
 import { ClientKafka } from '@nestjs/microservices';
-import { KafkaTopics } from 'src/kafka/kafka-topics.enum';
+import { KafkaTopics } from '../kafka/kafka-topics.enum';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
 
 @Injectable()
