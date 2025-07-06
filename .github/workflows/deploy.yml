@@ -28,14 +28,14 @@ jobs:
             echo "tag=latest" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set up Node
+      - name: Set up Node and enable pnpm via Corepack
         uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: 'pnpm'
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Enable pnpm via Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: pnpm install
